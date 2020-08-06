@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 from argparse import ArgumentParser
 import subprocess
 import json
@@ -16,13 +16,13 @@ def get_hosts():
     
     for line in content:
         line = line.lstrip()
-        if line.startswith('Host '):
+        # Ignore wildcards
+        if line.startswith('Host ') and not '*' in line:
             for host in line.split()[1:]:
                 hosts.append(host)
 
     # Removes duplicate entries
-    hosts = list(set(hosts))
-    hosts.sort()
+    hosts = sorted(set(hosts))
 
     return hosts
 
@@ -36,32 +36,27 @@ def show_wofi(hosts):
     command="wofi -p \"SSH hosts: \" -d -i --hide-scroll"
     
     process = subprocess.Popen(command,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE)
-    return process.communicate(input=hosts)[0]
-
-# Returns the id of the window that was selected by the user inside wofi
-def parse_id(hosts, selected):
-    selected = int(selected.decode("UTF-8"))
-    return str(hosts[selected].get('id'))
+    ret = process.communicate(input=hosts)
+    host, rest = ret
+    return host
 
 # Switches the focus to the given id
-def ssh_to_host(host, terminal):
-    command=terminal + " 'ssh " + host + "'"
-    
+def ssh_to_host(host, terminal, ssh_command):
+    command = "{terminal} \'{ssh_command} {host}\'".format(terminal=terminal, ssh_command=ssh_command, host=host)
     process = subprocess.Popen(command,shell=True)
 
 # Entry point
 if __name__ == "__main__":
     
     parser = ArgumentParser(description="Wofi based ssh launcher")
-    parser.add_argument("terminal")
+    parser.add_argument("terminal", help='Terminal command to use')
+    parser.add_argument("--ssh-command", dest='ssh_command', default='ssh', help='ssh command to use (default=ssh)')
     args = parser.parse_args()
 
     hosts = get_hosts()
-
     parsed_hosts = parse_hosts(hosts)
     
     selected = show_wofi(parsed_hosts)
-
-    selected_host = hosts[int(selected)]
-
-    ssh_to_host(selected_host, args.terminal)
+    
+    selected_host = selected.decode('utf-8').rstrip()
+    ssh_to_host(selected_host, args.terminal, args.ssh_command)
