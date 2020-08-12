@@ -50,12 +50,16 @@ def extract_nodes_iterative(workspace):
 
     return all_nodes
 
-# Returns a newline seperated UFT-8 encoded string of all windows
+# Returns an array of all windows
 def parse_windows(windows):
     parsed_windows = []
     for window in windows:
         parsed_windows.append(window.get('name'))
-    return "\n".join(parsed_windows).encode("UTF-8")
+    return parsed_windows
+
+# Returns a newline seperated UFT-8 encoded string of all windows for wofi
+def build_wofi_string(windows):
+    return enter.join(windows).encode("UTF-8")
 
 # Executes wofi with the given input string
 def show_wofi(windows):
@@ -65,14 +69,15 @@ def show_wofi(windows):
     process = subprocess.Popen(command,shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE)
     return process.communicate(input=windows)[0]
 
-# Returns the id of the window that was selected by the user inside wofi
-def parse_id(windows, selected):
-    selected = int(selected.decode("UTF-8"))
-    return str(windows[selected].get('id'))
+# Returns the sway window id of the window that was selected by the user inside wofi
+def parse_id(windows, parsed_windows, selected):
+    selected = (selected.decode("UTF-8"))[:-1] # Remove new line character
+    window_index = int(parsed_windows.index(selected)) # Get index of selected window in the parsed window array
+    return str(windows[window_index].get('id')) # Get sway window id based on the index
 
 # Switches the focus to the given id
 def switch_window(id):
-    command="swaymsg [con_id=" + id + "] focus"
+    command="swaymsg [con_id={}] focus".format(id)
     
     process = subprocess.Popen(command,shell=True,stdout=subprocess.PIPE)
     process.communicate()[0]
@@ -83,11 +88,13 @@ if __name__ == "__main__":
     parser = ArgumentParser(description="Wofi based window switcher")
 
     windows = get_windows()
-
-    parsed_windows = parse_windows(windows)
     
-    selected = show_wofi(parsed_windows)
+    parsed_windows = parse_windows(windows)    
+    
+    wofi_string = build_wofi_string(parsed_windows)
 
-    selected_id = parse_id(windows, selected)
+    selected = show_wofi(wofi_string)
+    
+    selected_id = parse_id(windows, parsed_windows, selected)
 
     switch_window(selected_id)

@@ -35,6 +35,9 @@ Python based, fast and very simple ssh launcher.
 
 ## Version History
 
+#### 0.2.1
+- Remove the requirement for `dmenu-print_line_num=true` config option for wofi
+
 #### 0.2
 - Adds ssh launcher
 
