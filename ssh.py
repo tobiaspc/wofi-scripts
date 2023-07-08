@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from argparse import ArgumentParser
 import subprocess
-import json
 import os
 
 ssh_config_file = "~/.ssh/config"
@@ -11,15 +10,24 @@ def get_hosts():
 
     hosts = []
 
-    with open(os.path.expanduser(ssh_config_file)) as f:
-        content = f.readlines()
-    
-    for line in content:
-        line = line.lstrip()
-        # Ignore wildcards
-        if line.startswith('Host ') and not '*' in line:
-            for host in line.split()[1:]:
-                hosts.append(host)
+    def parse_file(filename):
+        with open(os.path.expanduser(filename)) as f:
+            content = f.readlines()
+
+        for line in content:
+            line = line.lstrip()
+            # Ignore wildcards
+            if line.startswith('Host ') and not '*' in line:
+                for host in line.split()[1:]:
+                    hosts.append(host)
+            if line.startswith('Include ') and not '*' in line:
+                filename = line.replace('Include ', '').rstrip()
+                try:
+                    parse_file(filename)
+                except OSError as e:
+                    print(e)
+
+    parse_file(ssh_config_file)
 
     # Removes duplicate entries
     hosts = sorted(set(hosts))
